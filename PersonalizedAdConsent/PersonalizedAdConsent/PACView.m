@@ -204,7 +204,7 @@ PACQueryParametersFromURL(NSURL *_Nonnull URL) {
     [self loadCompletedWithError:error];
     return;
   }
-  NSURL *URL = [resourceBundle URLForResource:NSLocalizedStringFromTable(@"consentform", @"consentform", nil) withExtension:@"html"];
+  NSURL *URL = [resourceBundle URLForResource:NSLocalizedStringFromTableInBundle(@"consentform", @"consentform", resourceBundle, "") withExtension:@"html"];
   NSURLRequest *URLRequest = [[NSURLRequest alloc] initWithURL:URL];
   [_webView loadRequest:URLRequest];
 }
