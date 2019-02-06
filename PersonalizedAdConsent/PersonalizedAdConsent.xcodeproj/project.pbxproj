@@ -173,6 +173,7 @@
 				nl,
 				ru,
 				pt,
+				Base,
 			);
 			mainGroup = 5A92D2952076961800FFE51D;
 			productRefGroup = 5A92D2A02076961800FFE51D /* Products */;
