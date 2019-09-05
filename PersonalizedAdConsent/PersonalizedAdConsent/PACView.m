@@ -18,6 +18,8 @@
 
 #import "PACError.h"
 
+#import <WebKit/WebKit.h>
+
 /// Dictionary keys for processed form status strings.
 typedef NSString *PACFormStatusKey NS_STRING_ENUM;
 /// Error object key.
@@ -132,11 +134,11 @@ PACQueryParametersFromURL(NSURL *_Nonnull URL) {
   return parameterDictionary;
 }
 
-@interface PACView () <UIWebViewDelegate>
+@interface PACView () <WKNavigationDelegate>
 @end
 
 @implementation PACView {
-  UIWebView *_webView;
+  WKWebView *_webView;
   NSDictionary<PACFormKey, id> *_formInformation;
   PACLoadCompletion _loadCompletionHandler;
 }
@@ -146,9 +148,9 @@ PACQueryParametersFromURL(NSURL *_Nonnull URL) {
   if (self) {
     self.backgroundColor = UIColor.clearColor;
     self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-
-    _webView = [[UIWebView alloc] initWithFrame:frame];
-    _webView.delegate = self;
+    WKWebViewConfiguration *config = [WKWebViewConfiguration new];
+    _webView = [[WKWebView alloc]initWithFrame:frame configuration:config];
+    _webView.navigationDelegate = self;
     _webView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     _webView.backgroundColor = UIColor.clearColor;
     _webView.opaque = NO;
@@ -222,7 +224,10 @@ PACQueryParametersFromURL(NSURL *_Nonnull URL) {
     NSString *command = PACCreateJavaScriptCommandString(@"setUpConsentDialog", @{
       @"info" : infoString
     });
-    [self->_webView stringByEvaluatingJavaScriptFromString:command];
+    [self -> _webView evaluateJavaScript:command completionHandler:^(id result, NSError *error){
+          
+      }];
+    //[self->_webView stringByEvaluatingJavaScriptFromString:command];
   });
 }
 
@@ -294,6 +299,65 @@ PACQueryParametersFromURL(NSURL *_Nonnull URL) {
 
   return formStatus;
 }
+
+
+#pragma mark WKNavigationDelegate
+
+
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation{
+    [self updateWebViewInformation];
+}
+
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error{
+    [self loadCompletedWithError:error];
+}
+
+
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler{
+    
+    NSURLRequest *request=navigationAction.request;
+    
+    NSString *URLString = request.URL.absoluteString;
+
+    if (![URLString hasPrefix:@"consent://"]) {
+        decisionHandler(WKNavigationActionPolicyAllow);
+        return;
+    }
+    
+    NSDictionary<NSString *, NSString *> *parameters = PACQueryParametersFromURL(request.URL);
+    NSString *action = parameters[@"action"];
+    NSCAssert(action.length > 0, @"Messages must have actions.");
+
+    if ([action isEqual:@"load_complete"]) {
+      NSString *statusString = parameters[@"status"];
+      NSError *loadError = nil;
+      if (!statusString.length) {
+        loadError = PACErrorWithDescription(@"No information.");
+      }
+      if (PACIsErrorStatusString(statusString)) {
+        loadError = PACErrorWithDescription(statusString);
+      }
+
+      // Load was successful if the status string isn't an empty or error string.
+      [self loadCompletedWithError:loadError];
+    }
+
+    if ([action isEqual:@"dismiss"]) {
+      NSString *statusString = parameters[@"status"];
+      [self dismissWithStatusString:statusString];
+    }
+
+    if ([action isEqual:@"browser"]) {
+      NSString *URLString = parameters[@"url"];
+      NSURL *URL = [NSURL URLWithString:URLString];
+      if (URL) {
+        [self showBrowser:URL];
+      }
+    }
+  
+    decisionHandler(WKNavigationActionPolicyCancel);
+}
+
 
 #pragma mark UIWebViewDelegate
 
