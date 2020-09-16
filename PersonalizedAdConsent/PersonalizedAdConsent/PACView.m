@@ -209,7 +209,7 @@ static NSDictionary<NSString *, NSString *> *_Nonnull PACQueryParametersFromURL(
     [self loadCompletedWithError:error];
     return;
   }
-  NSURL *URL = [resourceBundle URLForResource:@"consentform" withExtension:@"html"];
+  NSURL *URL = [resourceBundle URLForResource:NSLocalizedStringFromTable(@"consentform", @"consentform", nil) withExtension:@"html"];
   NSURLRequest *URLRequest = [[NSURLRequest alloc] initWithURL:URL];
   [_webView loadRequest:URLRequest];
 }
